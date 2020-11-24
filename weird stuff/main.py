@@ -1,4 +1,3 @@
-# coding: utf-8
 import argparse
 import time
 import math
@@ -13,8 +12,8 @@ import model
 parser = argparse.ArgumentParser(description='PyTorch Wikitext-2 RNN/LSTM/GRU/Transformer Language Model')
 parser.add_argument('--data', type=str, default='./data/wikitext-2',
                     help='location of the data corpus')
-parser.add_argument('--model', type=str, default='FeedForward',
-                    help='type of net (FeedForward, RNN_TANH, RNN_RELU, LSTM, GRU, Transformer)')
+parser.add_argument('--model', type=str, default='LSTM',
+                    help='type of recurrent net (RNN_TANH, RNN_RELU, LSTM, GRU, Transformer)')
 parser.add_argument('--emsize', type=int, default=200,
                     help='size of word embeddings')
 parser.add_argument('--nhid', type=int, default=200,
@@ -33,7 +32,7 @@ parser.add_argument('--bptt', type=int, default=35,
                     help='sequence length')
 parser.add_argument('--dropout', type=float, default=0.2,
                     help='dropout applied to layers (0 = no dropout)')
-parser.add_argument('--tied', action='store_true', #TODO default
+parser.add_argument('--tied', action='store_true',
                     help='tie the word embedding and softmax weights')
 parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
@@ -45,9 +44,10 @@ parser.add_argument('--save', type=str, default='model.pt',
                     help='path to save the final model')
 parser.add_argument('--onnx-export', type=str, default='',
                     help='path to export the final model in onnx format')
-
 parser.add_argument('--norder', type=int, default=2,
                     help='context size in feed-forward model; the number of heads in the transformer model')
+parser.add_argument('--nhead', type=int, default=2,
+                    help='the number of heads in the encoder/decoder of the transformer model')
 parser.add_argument('--dry-run', action='store_true',
                     help='verify the code and the model')
 
@@ -66,7 +66,6 @@ device = torch.device("cuda" if args.cuda else "cpu")
 ###############################################################################
 
 corpus = data.Corpus(args.data)
-pad_id = corpus.dictionary.word2idx['<eos>']
 
 # Starting from sequential data, batchify arranges the dataset into columns.
 # For instance, with the alphabet as the sequence and batch size 4, we'd get
@@ -90,7 +89,6 @@ def batchify(data, bsz):
     return data.to(device)
 
 eval_batch_size = 10
-
 train_data = batchify(corpus.train, args.batch_size)
 val_data = batchify(corpus.valid, eval_batch_size)
 test_data = batchify(corpus.test, eval_batch_size)
@@ -100,12 +98,14 @@ test_data = batchify(corpus.test, eval_batch_size)
 ###############################################################################
 
 ntokens = len(corpus.dictionary)
-if args.model == 'FeedForward':
-    model = model.FeedForwardModel(args.norder, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied).to(device)
-elif args.model == 'Transformer':
-    model = model.TransformerModel(ntokens, args.emsize, args.norder, args.nhid, args.nlayers, args.dropout).to(device)
+if (args.model == 'Transformer'):
+    model = model.TransformerModel(ntokens, args.emsize, args.nhead, args.nhid, args.nlayers, args.dropout).to(device)
+elif (args.model == 'FeedForward'):
+    model = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied).to(device)
 else:
     model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied).to(device)
+
+
 
 criterion = nn.NLLLoss()
 
@@ -132,12 +132,9 @@ def repackage_hidden(h):
 # by the batchify function. The chunks are along dimension 0, corresponding
 # to the seq_len dimension in the LSTM.
 
-def get_batch(source, i, pad_start=False):
+def get_batch(source, i):
     seq_len = min(args.bptt, len(source) - 1 - i)
-    data = source[i:i+seq_len]  # not predicting the first token in batch
-    if pad_start and args.norder > 1: 
-        padding = torch.ones(args.norder-1, source.size()[1], dtype=torch.long).to(device)*pad_id
-        data = torch.cat((padding, data), dim=0)
+    data = source[i:i+seq_len]
     target = source[i+1:i+1+seq_len].view(-1)
     return data, target
 
@@ -147,16 +144,16 @@ def evaluate(data_source):
     model.eval()
     total_loss = 0.
     ntokens = len(corpus.dictionary)
-    if not (args.model == 'Transformer' or args.model == 'FeedForward'):
+    if args.model != 'Transformer':
         hidden = model.init_hidden(eval_batch_size)
     with torch.no_grad():
         for i in range(0, data_source.size(0) - 1, args.bptt):
-            data, targets = get_batch(data_source, i, args.model == 'FeedForward')
-            if args.model == 'Transformer' or args.model == 'FeedForward':
+            data, targets = get_batch(data_source, i)
+            if args.model == 'Transformer':
                 output = model(data)
                 output = output.view(-1, ntokens)
             else:
-                output, hidden = model(data, hidden)
+                output = model(data)
                 hidden = repackage_hidden(hidden)
             total_loss += len(data) * criterion(output, targets).item()
     return total_loss / (len(data_source) - 1)
@@ -168,20 +165,19 @@ def train():
     total_loss = 0.
     start_time = time.time()
     ntokens = len(corpus.dictionary)
-    if not (args.model == 'Transformer' or args.model == 'FeedForward'):
+    if args.model != 'Transformer':
         hidden = model.init_hidden(args.batch_size)
-    print("Start Training")
     for batch, i in enumerate(range(0, train_data.size(0) - 1, args.bptt)):
-        data, targets = get_batch(train_data, i, args.model == 'FeedForward')
+        data, targets = get_batch(train_data, i)
         # Starting each batch, we detach the hidden state from how it was previously produced.
         # If we didn't, the model would try backpropagating all the way to start of the dataset.
         model.zero_grad()
-        if args.model == 'Transformer' or args.model == 'FeedForward':
+        if args.model == 'Transformer':
             output = model(data)
             output = output.view(-1, ntokens)
         else:
             hidden = repackage_hidden(hidden)
-            output, hidden = model(data, hidden)
+            output = model(data)
         loss = criterion(output, targets)
         loss.backward()
 
