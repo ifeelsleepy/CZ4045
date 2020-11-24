@@ -72,9 +72,9 @@ class FeedForwardModel(nn.Module):
         self.nonlin = nn.Tanh()
         self.encoder = nn.Embedding(ntoken, ninp)
 
-        self.ff_first = nn.Linear(ninp, nhid*norder) 
-        if nlayers > 1:
-            self.ff_rest = nn.ModuleList([nn.Linear(nhid, nhid) for i in range(1, nlayers)])
+        self.ff_first = nn.Linear(ninp, nhid*norder)
+        #if nlayers > 1:
+            #self.ff_rest = nn.ModuleList([nn.Linear(nhid, nhid) for i in range(1, nlayers)])
 
         self.decoder = nn.Linear(nhid, ntoken)
 
@@ -111,8 +111,8 @@ class FeedForwardModel(nn.Module):
         output = self.drop(self.nonlin(output))
 
 	# Higher hidden layers
-        for i in range(self.nlayers-1):
-            output = self.drop(self.nonlin(self.ff_rest[i](output)))
+        #for i in range(self.nlayers-1):
+            #output = self.drop(self.nonlin(self.ff_rest[i](output)))
         
         decoded = self.decoder(output)
         decoded = decoded.view(-1, self.ntoken)
