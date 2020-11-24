@@ -71,10 +71,10 @@ class FeedForwardModel(nn.Module):
         self.drop = nn.Dropout(dropout)
         self.nonlin = nn.Tanh()
         self.encoder = nn.Embedding(ntoken, ninp)
-
-        self.ff_first = nn.Linear(ninp, nhid*norder)
-        #if nlayers > 1:
-            #self.ff_rest = nn.ModuleList([nn.Linear(nhid, nhid) for i in range(1, nlayers)])
+        self.model_type = 'FeedForward'
+        self.ff_first = nn.Linear(ninp, nhid*norder) 
+        if nlayers > 1:
+            self.ff_rest = nn.ModuleList([nn.Linear(nhid, nhid) for i in range(1, nlayers)])
 
         self.decoder = nn.Linear(nhid, ntoken)
 
@@ -111,13 +111,17 @@ class FeedForwardModel(nn.Module):
         output = self.drop(self.nonlin(output))
 
 	# Higher hidden layers
-        #for i in range(self.nlayers-1):
-            #output = self.drop(self.nonlin(self.ff_rest[i](output)))
+        for i in range(self.nlayers-1):
+            output = self.drop(self.nonlin(self.ff_rest[i](output)))
         
         decoded = self.decoder(output)
         decoded = decoded.view(-1, self.ntoken)
-
-        return F.log_softmax(decoded, dim=1)
+        #print('Decoded:')
+        #print(decoded.cpu().detach().numpy().shape)
+        #print('Softmax:')
+        #print((F.log_softmax(decoded, dim=-1)).cpu().detach().numpy().shape)
+        return F.log_softmax(decoded, dim=-1)
+        
 
 
 # Temporarily leave PositionalEncoding module here. Will be moved somewhere else.
