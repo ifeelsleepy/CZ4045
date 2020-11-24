@@ -68,6 +68,7 @@ class FNNModel(nn.Module):
         self.ntoken = ntoken
         self.norder = norder
         self.drop = nn.Dropout(dropout)
+        self.model_type = 'FeedForward'
         self.encoder = nn.Embedding(ntoken, ninp)
 
         self.fnn = nn.Linear(ninp,nhid*norder)
@@ -96,10 +97,6 @@ class FNNModel(nn.Module):
         decoded = self.decoder(output)
         decoded = decoded.view(-1, self.ntoken)
         return F.log_softmax(decoded, dim=1)
-
-    def init_hidden(self, bsz):
-        weight = next(self.parameters())
-        return weight.new_zeros(self.nlayers, bsz, self.nhid)
 
 
 # Temporarily leave PositionalEncoding module here. Will be moved somewhere else.
