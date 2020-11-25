@@ -50,6 +50,8 @@ parser.add_argument('--nhead', type=int, default=2,
                     help='the number of heads in the encoder/decoder of the transformer model')
 parser.add_argument('--dry-run', action='store_true',
                     help='verify the code and the model')
+parser.add_argument('--SGD', type=bool, default=False,
+                    help='run on SGD optimization')
 
 args = parser.parse_args()
 
@@ -105,9 +107,14 @@ elif (args.model == 'FeedForward'):
 else:
     model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied).to(device)
 
-
-
+#Instantiate loss class
 criterion = nn.NLLLoss()
+
+# Instantiate opimizer class
+if (args.SGD == True):
+    print("Optimizing based on SGD")
+    learning_rate = args.lr
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 
 ###############################################################################
 # Training code
@@ -169,9 +176,13 @@ def train():
         hidden = model.init_hidden(args.batch_size)
     for batch, i in enumerate(range(0, train_data.size(0) - 1, args.bptt)):
         data, targets = get_batch(train_data, i)
-        # Starting each batch, we detach the hidden state from how it was previously produced.
-        # If we didn't, the model would try backpropagating all the way to start of the dataset.
-        model.zero_grad()
+        if (args.SGD == True):
+            # Clear gradients w.r.t. parameters
+            optimizer.zero_grad()
+        else:
+            # Starting each batch, we detach the hidden state from how it was previously produced.
+            # If we didn't, the model would try backpropagating all the way to start of the dataset.
+            model.zero_grad()
         if args.model == 'Transformer' or args.model == 'FeedForward':
             output = model(data)
             output = output.view(-1, ntokens)
@@ -180,7 +191,9 @@ def train():
             output = model(data)
         loss = criterion(output, targets)
         loss.backward()
-
+        if (args.SGD == True):
+            # Updating parameters
+            optimizer.step()
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         for p in model.parameters():
