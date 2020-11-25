@@ -3,82 +3,26 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class FeedForwardModel(nn.Module):
-    """Container module with an encoder, a feed forward module, and a decoder."""
-
-    def _init_(self, norder, ntoken, ninp, nhid, nlayers, dropout=0.5, tie_weights=False):
-        super(FeedForwardModel, self)._init_()
-        self.ntoken = ntoken
-        self.drop = nn.Dropout(dropout)
-        self.nonlin = nn.Tanh()
-        self.encoder = nn.Embedding(ntoken, ninp)
-
-        self.ff_first = nn.Linear(ninp, nhid*norder) 
-        if nlayers > 1:
-            self.ff_rest = nn.ModuleList([nn.Linear(nhid, nhid) for i in range(1, nlayers)])
-
-        self.decoder = nn.Linear(nhid, ntoken)
-
-        if tie_weights:
-            if nhid != ninp:
-                raise ValueError('When using the tied flag, nhid must be equal to emsize')
-            self.decoder.weight = self.encoder.weight
-
-        self.init_weights()
-
-        self.norder = norder
-        self.ninp = ninp
-        self.nhid = nhid
-        self.nlayers = nlayers
-
-
-    def init_weights(self):
-        initrange = 0.1
-        nn.init.uniform_(self.encoder.weight, -initrange, initrange)
-        nn.init.zeros_(self.decoder.bias)
-        nn.init.uniform_(self.decoder.weight, -initrange, initrange)
-
-
-    def forward(self, inp):
-        batch_size = inp.size()[1]
-        inp_length = inp.size()[0]
-        emb = self.drop(self.encoder(inp)) # input_length x batch_size x ninp
-
-        # Compute the first hidden layer efficiently
-        first_output = self.ff_first(emb).view(inp_length, batch_size, self.norder, self.nhid)
-        output = first_output[self.norder-1:,:,0,:] # input_length x batch_size x nhid
-        for j in range(1, self.norder): # shift positions for higher order contexts
-            output += first_output[self.norder-j-1:inp_length-j,:,j,:]
-        output = self.drop(self.nonlin(output))
-
-	# Higher hidden layers
-        for i in range(self.nlayers-1):
-            output = self.drop(self.nonlin(self.ff_rest[i](output)))
-        
-        decoded = self.decoder(output)
-        decoded = decoded.view(-1, self.ntoken)
-
-        return F.log_softmax(decoded, dim=1)
-
 class FNNModel(nn.Module):
     """Container module with an encoder, a recurrent module, and a decoder."""
 
-    def __init__(self, ntoken,norder,ninp, nhid, nlayers, dropout=0, tie_weights=False):
+    def __init__(self, ntoken, norder, ninp, nhid, nlayers, dropout=0, tie_weights=False):
         super(FNNModel, self).__init__()
         self.ntoken = ntoken
         self.norder = norder
+        self.drop = nn.Dropout(dropout)
         self.model_type = 'FeedForward'
         self.window_size = ninp * (norder - 1)
+        self.encoder = nn.Embedding(ntoken, ninp)
 
-        self.encoder = nn.Embedding(ntoken, ninp)        
-        self.fnn = nn.Linear(self.window_size, nhid)
+        self.fnn = nn.Linear(self.window_size,nhid*norder)
         self.nonlin = nn.Tanh()
-        self.decoder = nn.Linear(nhid, ntoken)
+
+        self.decoder = nn.Linear(nhid*norder, ntoken)
 
         if tie_weights:
             if nhid != ninp:
                 raise ValueError('When using the tied flag, nhid must be equal to emsize')
-            print(self.decoder.weight,self.encoder.weight)
             self.decoder.weight = self.encoder.weight
 
         self.init_weights()
@@ -92,12 +36,12 @@ class FNNModel(nn.Module):
         nn.init.uniform_(self.decoder.weight, -initrange, initrange)
 
     def forward(self, input):
-        emb = self.encoder(input).view(-1,self.window_size)
+        emb = self.drop(self.encoder(input).view(-1,self.window_size))
         output= self.fnn(emb)
-        output= self.nonlin(output)
+        output = self.nonlin(output)
         decoded = self.decoder(output)
+        decoded = decoded.view(-1, self.ntoken)
         return F.log_softmax(decoded, dim=1)
-
 
 # Temporarily leave PositionalEncoding module here. Will be moved somewhere else.
 class PositionalEncoding(nn.Module):
