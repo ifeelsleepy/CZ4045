@@ -146,6 +146,11 @@ def get_batch(source, i):
     target = source[i+1:i+1+seq_len].view(-1)
     return data, target
 
+def get_ngrams(source,i):
+    seq_len = args.norder
+    data = source[i:i+seq_len]
+    target = source[i+1: i+1+args.norder].view(-1)
+    return data, target
 
 def evaluate(data_source):
     # Turn on evaluation mode which disables dropout.
@@ -176,7 +181,7 @@ def train():
     if args.model != 'Transformer' and args.model != 'FeedForward':
         hidden = model.init_hidden(args.batch_size)
     for batch, i in enumerate(range(0, train_data.size(0) - 1, args.bptt)):
-        data, targets = get_batch(train_data, i)
+        data, targets = get_ngrams(train_data, i)
         if (args.SGD == True):
             # Clear gradients w.r.t. parameters
             optimizer.zero_grad()

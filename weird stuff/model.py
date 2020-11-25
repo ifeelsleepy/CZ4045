@@ -37,6 +37,7 @@ class FNNModel(nn.Module):
 
     def forward(self, input):
         emb = self.drop(self.encoder(input).view(-1,self.window_size))
+        print("emb shape", emb.numpy().shape)
         output= self.fnn(emb)
         output = self.nonlin(output)
         decoded = self.decoder(output)
