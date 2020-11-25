@@ -32,7 +32,7 @@ parser.add_argument('--bptt', type=int, default=35,
                     help='sequence length')
 parser.add_argument('--dropout', type=float, default=0.2,
                     help='dropout applied to layers (0 = no dropout)')
-parser.add_argument('--tied', action='store_true',
+parser.add_argument('--tied', action='store_true', 
                     help='tie the word embedding and softmax weights')
 parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
@@ -104,6 +104,7 @@ if (args.model == 'Transformer'):
     model = model.TransformerModel(ntokens, args.emsize, args.nhead, args.nhid, args.nlayers, args.dropout).to(device)
 elif (args.model == 'FeedForward'):
     model = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied).to(device)
+    print(model)
 else:
     model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied).to(device)
 
@@ -140,7 +141,7 @@ def repackage_hidden(h):
 # to the seq_len dimension in the LSTM.
 
 def get_batch(source, i):
-    seq_len = min(args.bptt, len(source) - 1 - i)
+    seq_len = (min(args.bptt, len(source) - 1 - i))
     data = source[i:i+seq_len]
     target = source[i+1:i+1+seq_len].view(-1)
     return data, target

@@ -67,17 +67,18 @@ class FNNModel(nn.Module):
         super(FNNModel, self).__init__()
         self.ntoken = ntoken
         self.norder = norder
-        self.drop = nn.Dropout(dropout)
         self.model_type = 'FeedForward'
-        self.encoder = nn.Embedding(ntoken, ninp)
+        self.window_size = ninp * (norder - 1)
 
-        self.fnn = nn.Linear(ninp,nhid*norder)
-
-        self.decoder = nn.Linear(nhid*norder, ntoken)
+        self.encoder = nn.Embedding(ntoken, ninp)        
+        self.fnn = nn.Linear(self.window_size, nhid)
+        self.nonlin = nn.Tanh()
+        self.decoder = nn.Linear(nhid, ntoken)
 
         if tie_weights:
             if nhid != ninp:
                 raise ValueError('When using the tied flag, nhid must be equal to emsize')
+            print(self.decoder.weight,self.encoder.weight)
             self.decoder.weight = self.encoder.weight
 
         self.init_weights()
@@ -91,11 +92,10 @@ class FNNModel(nn.Module):
         nn.init.uniform_(self.decoder.weight, -initrange, initrange)
 
     def forward(self, input):
-        emb = self.drop(self.encoder(input))
+        emb = self.encoder(input).view(-1,self.window_size)
         output= self.fnn(emb)
-        output = self.drop(output)
+        output= self.nonlin(output)
         decoded = self.decoder(output)
-        decoded = decoded.view(-1, self.ntoken)
         return F.log_softmax(decoded, dim=1)
 
 
