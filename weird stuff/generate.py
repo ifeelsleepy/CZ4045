@@ -62,7 +62,7 @@ with open(args.outf, 'w', encoding='utf-8') as outf:
     with torch.no_grad():  # no tracking history
         for i in range(args.words):
             if is_transformer_model or is_feedforward_model:
-                output = model(input, False)
+                output = model(input)
                 word_weights = output[-1].squeeze().div(args.temperature).exp().cpu()
                 word_idx = torch.multinomial(word_weights, 1)[0]
                 word_tensor = torch.Tensor([[word_idx]]).long().to(device)

@@ -229,6 +229,7 @@ lr = args.lr
 best_val_loss = None
 
 # At any point you can hit Ctrl + C to break out of training early.
+saved_data =[]
 try:
     for epoch in range(1, args.epochs+1):
         epoch_start_time = time.time()
@@ -239,6 +240,9 @@ try:
                 'valid ppl {:8.2f}'.format(epoch, (time.time() - epoch_start_time),
                                            val_loss, math.exp(val_loss)))
         print('-' * 89)
+        saved_data.append('end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
+                            'valid ppl {:8.2f}'.format(epoch, (time.time() - epoch_start_time),
+                             val_loss, math.exp(val_loss)))
         # Save the model if the validation loss is the best we've seen so far.
         if not best_val_loss or val_loss < best_val_loss:
             with open(args.save, 'wb') as f:
@@ -250,6 +254,10 @@ try:
 except KeyboardInterrupt:
     print('-' * 89)
     print('Exiting from training early')
+
+with open('train_data.txt', 'w', encoding='utf-8') as outf:
+    for i in range(len(saved_data)):
+        outf.write(saved_data[i]+',')
 
 # Load the best saved model.
 with open(args.save, 'rb') as f:
