@@ -6,7 +6,7 @@ import torch.nn.functional as F
 class FNNModel(nn.Module):
     """Container module with an encoder, a recurrent module, and a decoder."""
 
-    def __init__(self, ntoken, norder, ninp, nhid, nlayers, dropout=0, tie_weights=False):
+    def __init__(self, ntoken, norder, ninp, nhid, nlayers, dropout=0.2, tie_weights=False):
         super(FNNModel, self).__init__()
         self.ntoken = ntoken
         self.norder = norder
@@ -15,10 +15,11 @@ class FNNModel(nn.Module):
         self.window_size = ninp * (norder - 1)
         self.encoder = nn.Embedding(ntoken, ninp)
 
-        self.fnn = nn.Linear(self.window_size,nhid*norder)
+        self.fnn = nn.Linear(self.window_size,nhid)
         self.nonlin = nn.Tanh()
 
-        self.decoder = nn.Linear(nhid*norder, ntoken)
+        self.decoder = nn.Linear(nhid, ntoken)
+
 
         if tie_weights:
             if nhid != ninp:
@@ -36,9 +37,8 @@ class FNNModel(nn.Module):
         nn.init.uniform_(self.decoder.weight, -initrange, initrange)
 
     def forward(self, input):
-        emb = self.drop(self.encoder(input).view(-1,self.window_size))
-        print("emb shape", emb.numpy().shape)
-        output= self.fnn(emb)
+        emb = self.encoder(input).view(-1,self.window_size)
+        output= self.drop(self.fnn(emb))
         output = self.nonlin(output)
         decoded = self.decoder(output)
         decoded = decoded.view(-1, self.ntoken)
@@ -152,6 +152,7 @@ class RNNModel(nn.Module):
                 raise ValueError( """An invalid option for `--model` was supplied,
                                  options are ['LSTM', 'GRU', 'RNN_TANH' or 'RNN_RELU']""")
             self.rnn = nn.RNN(ninp, nhid, nlayers, nonlinearity=nonlinearity, dropout=dropout)
+
         self.decoder = nn.Linear(nhid, ntoken)
 
         # Optionally tie weights as in:
