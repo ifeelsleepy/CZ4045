@@ -9,7 +9,7 @@ class FNNModel(nn.Module):
     def __init__(self, ntoken, norder, ninp, nhid, nlayers, dropout=0.2, tie_weights=False):
         super(FNNModel, self).__init__()
         self.ntoken = ntoken
-        self.norder = norder
+        #self.norder = norder
         self.drop = nn.Dropout(dropout)
         #self.model_type = 'FeedForward'
         self.window_size = ninp * (norder - 1)
@@ -17,7 +17,7 @@ class FNNModel(nn.Module):
         self.relu = nn.ReLU()
 
         self.fnn = nn.Linear(self.window_size,nhid)
-        self.nonlin = nn.Tanh()
+        #self.nonlin = nn.Tanh()
 
         self.decoder = nn.Linear(nhid, ntoken)
 

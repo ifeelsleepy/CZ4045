@@ -179,11 +179,11 @@ def evaluate(data_source):
     with torch.no_grad():
         for i in range(0, data_source.size(0) - 1):
             data, targets = get_ngrams(data_source, i)
-            if args.model == 'FeedForward_1' or args.model == 'FeedForward':
-                output = model(data)
-                #output = output.view(-1, ntokens)
-                total_size+=len(data)
-                total_loss += len(data) * criterion(output, targets).item()
+            output = model(data)
+            #output = output.view(-1, ntokens)
+            total_size+=len(data)
+            total_loss += len(data) * criterion(output, targets).item()
+
             # else:
             #     output = model(data)
             #     hidden = repackage_hidden(hidden)
