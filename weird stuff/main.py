@@ -206,7 +206,6 @@ def train(shorter_data=False):
         model.zero_grad()
 
         output = model(data)
-        output = output.view(-1, ntokens)
         loss = criterion(output, targets)
         loss.backward()
 
@@ -217,25 +216,25 @@ def train(shorter_data=False):
 
         total_loss = loss.item()
 
-        if batch % args.log_interval == 0 and batch > 0 and args.verbose:
+        if batch % args.train_log_interval == 0 and batch > 0 and args.verbose:
             print(total_loss)
-            cur_loss = total_loss / args.log_interval
+            cur_loss = total_loss / args.train_log_interval
             elapsed = time.time() - start_time
             print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.4f} | ms/batch {:5.2f} | '
                   'loss {:5.2f} | ppl {:8.2f}'.format(
                 epoch, batch, len(source), lr,
-                elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss)))
+                elapsed * 1000 / args.train_log_interval, cur_loss, math.exp(cur_loss)))
             total_loss = 0
             start_time = time.time()
         if args.dry_run:
             break
 
 if args.tied:
-    emsizes = [10, 30, 90, 270]
+    emsizes = [10]
     nhids = [None]
 else:
-    emsizes = [10, 30, 90, 270]
-    nhids = [10, 30, 90, 270]
+    emsizes = [10]
+    nhids = [10]
 
 dropouts = [0, 0.2, 0.5]
 
