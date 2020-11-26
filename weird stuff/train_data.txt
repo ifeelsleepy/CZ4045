@@ -1,1 +1,0 @@
-end of epoch   1 | time: 41.77s | valid loss  9.49 | valid ppl 13241.85,end of epoch   2 | time: 41.58s | valid loss  9.62 | valid ppl 15107.23,end of epoch   3 | time: 42.14s | valid loss  7.47 | valid ppl  1761.01,end of epoch   4 | time: 43.24s | valid loss  7.51 | valid ppl  1824.44,end of epoch   5 | time: 41.95s | valid loss  7.07 | valid ppl  1181.31,

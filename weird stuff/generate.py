@@ -59,27 +59,39 @@ if not is_transformer_model:
         hidden = model.init_hidden(1)
 input = torch.randint(7, (1, 1), dtype=torch.long).to(device)
 
+with open(args.checkpoint, 'rb') as f:
+    model = torch.load(f).to(device)
 
-with open(args.outf, 'w', encoding='utf-8') as outf:
+model.eval()
+
+is_fnn = True
+if not is_fnn:
+    hidden = model.init_hidden(1)
+torch.manual_seed(args.seed)
+input = torch.randint(ntokens, (0, 1), dtype=torch.long).to(device)
+
+with open(args.outf, 'w') as outf:
     with torch.no_grad():  # no tracking history
         for i in range(args.words):
-            if is_transformer_model or is_feedforward_model:
-                print(input.detach().cpu().numpy().shape)
-                output = model(input)
-                word_weights = output[-1].squeeze().div(args.temperature).exp().cpu()
-                word_idx = torch.multinomial(word_weights, 1)[0]
-                word_tensor = torch.Tensor([[word_idx]]).long().to(device)
-                input = torch.cat([input, word_tensor], 0)
+            seq_len = args.ngram - 1
+            start = i - seq_len
+
+            if start < 0:
+                dummy_token = corpus.dictionary.word2idx["<eos>"]
+                dummy_tokens = torch.full((-start, input.size(1)), dummy_token).to(device)
+                data = torch.cat((dummy_tokens, input[0:i]))
             else:
-                output= model(input)
-                #print(output.cpu().numpy().shape)
-                word_weights = output.squeeze().div(args.temperature).exp().cpu()
-                word_idx = torch.multinomial(word_weights, 1)[0]
-                input.fill_(word_idx)
+                data = input[i - seq_len:i]
+
+            output = model(data)
+            word_weights = output[-1].squeeze().div(args.temperature).exp().cpu()
+            word_idx = torch.multinomial(word_weights, 1)[0]
+            word_tensor = torch.Tensor([[word_idx]]).long().to(device)
+            input = torch.cat([input, word_tensor], 0)
 
             word = corpus.dictionary.idx2word[word_idx]
 
             outf.write(word + ('\n' if i % 20 == 19 else ' '))
 
-            if i % args.log_interval == 0:
+            if i % args.generate_log_interval == 0:
                 print('| Generated {}/{} words'.format(i, args.words))

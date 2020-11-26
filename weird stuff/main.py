@@ -32,7 +32,7 @@ parser.add_argument('--bptt', type=int, default=35,
                     help='sequence length')
 parser.add_argument('--dropout', type=float, default=0.2,
                     help='dropout applied to layers (0 = no dropout)')
-parser.add_argument('--tied', action='store_true', 
+parser.add_argument('--tied', action='store_true',
                     help='tie the word embedding and softmax weights')
 parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
@@ -52,6 +52,9 @@ parser.add_argument('--dry-run', action='store_true',
                     help='verify the code and the model')
 parser.add_argument('--SGD', type=bool, default=False,
                     help='run on SGD optimization')
+parser.add_argument('--train_log_interval', type=int, default=1000,
+                    help='train log interval')
+
 
 args = parser.parse_args()
 
@@ -168,70 +171,102 @@ def evaluate(data_source):
     model.eval()
     total_loss = 0.
     ntokens = len(corpus.dictionary)
+    total_size = 0
     if args.model != 'Transformer' and args.model != 'FeedForward':
         hidden = model.init_hidden(eval_batch_size)
     with torch.no_grad():
-        for i in range(0, data_source.size(0) - 1, args.norder):
+        for i in range(0, data_source.size(0) - 1):
             data, targets = get_ngrams(data_source, i)
             if args.model == 'Transformer' or args.model == 'FeedForward':
                 output = model(data)
-                output = output.view(-1, ntokens)
-            else:
-                output = model(data)
-                hidden = repackage_hidden(hidden)
-            total_loss += len(data) * criterion(output, targets).item()
-    return total_loss / (len(data_source) - 1)
+                #output = output.view(-1, ntokens)
+                total_size+=len(data)
+                total_loss += len(data) * criterion(output, targets).item()
+            # else:
+            #     output = model(data)
+            #     hidden = repackage_hidden(hidden)
+
+    return total_loss / total_size
 
 
-def train():
+def train(shorter_data=False):
     # Turn on training mode which enables dropout.
     model.train()
-    total_loss = 0.
+    total_loss = 0
     start_time = time.time()
     ntokens = len(corpus.dictionary)
-    if args.model != 'Transformer' and args.model != 'FeedForward':
-        hidden = model.init_hidden(args.batch_size)
+    source = train_data[:1000] if shorter_data else train_data
 
-    for batch, i in enumerate(range(0, train_data.size(0) - 1, args.norder)):
-        data, targets = get_ngrams(train_data, i)
-        if (args.SGD == True):
-            # Clear gradients w.r.t. parameters
-            optimizer.zero_grad()
-        else:
-            # Starting each batch, we detach the hidden state from how it was previously produced.
-            # If we didn't, the model would try backpropagating all the way to start of the dataset.
-            model.zero_grad()
-        if args.model == 'Transformer' or args.model == 'FeedForward':
-            output = model(data)
-            output = output.view(-1, ntokens)
-        else:
-            hidden = repackage_hidden(hidden)
-            output = model(data)
+    for batch, i in enumerate(range(0, source.size(0) - 1)):
+        data, targets = get_ngrams(source, i)
+        # Starting each batch, we detach the hidden state from how it was previously produced.
+        # If we didn't, the model would try backpropagating all the way to start of the dataset.
+        model.zero_grad()
+
+        output = model(data)
         loss = criterion(output, targets)
         loss.backward()
+
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         for p in model.parameters():
             p.data.add_(p.grad, alpha=-lr)
 
-        total_loss += loss.item()
+        total_loss = loss.item()
 
-        if (args.SGD == True):
-            # Updating parameters
-            optimizer.step()
-
-        if batch % args.log_interval == 0 and batch > 0:
-            cur_loss = total_loss / args.log_interval
+        if batch % args.train_log_interval == 0 and batch > 0 and args.verbose:
+            cur_loss = total_loss / args.train_log_interval
             elapsed = time.time() - start_time
-            print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | '
-                    'loss {:5.2f} | ppl {:8.2f}'.format(
-                epoch, batch, len(train_data) // args.norder, lr,
-                elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss)))
+            print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.4f} | ms/batch {:5.2f} | '
+                  'loss {:5.2f} | ppl {:8.2f}'.format(
+                epoch, batch, len(source), lr,
+                elapsed * 1000 / args.train_log_interval, cur_loss, math.exp(cur_loss)))
             total_loss = 0
             start_time = time.time()
         if args.dry_run:
             break
 
+if args.tied:
+    emsizes = [10, 30, 90, 270]
+    nhids = [None]
+else:
+    emsizes = [10, 30, 90, 270]
+    nhids = [10, 30, 90, 270]
+
+dropouts = [0, 0.2, 0.5]
+
+epochs = 3
+lr = args.lr
+
+print('-' * 89)
+print("Hyperparameters tuning using val loss after {:1d} epochs".format(epochs))
+print('-' * 89)
+
+args.verbose = False
+
+try:
+    for emsize in emsizes:
+        for nhid in nhids:
+            for dropout in dropouts:
+                if nhid is None:
+                    nhid = emsize
+
+                best_val_loss = None
+                torch.manual_seed(args.seed)
+                args.model = 'FeedForward'
+
+                for epoch in range(1, epochs+1):
+                    train(shorter_data=True)
+                    val_loss = evaluate(val_data[:100])
+                    if not best_val_loss or val_loss < best_val_loss:
+                        best_val_loss = val_loss
+                    else:
+                        lr /= 4.0
+                print("| emsize {:3d} | nhid {:3d} | dropout {:02.1f} | val loss {:02.4f} ".format(emsize, nhid, dropout, best_val_loss))
+
+except KeyboardInterrupt:
+    print('-' * 89)
+    print('Exiting from training early')
 
 def export_onnx(path, batch_size, seq_len):
     print('The model is also exported in ONNX format at {}'.
@@ -241,26 +276,43 @@ def export_onnx(path, batch_size, seq_len):
     hidden = model.init_hidden(batch_size)
     torch.onnx.export(model, (dummy_input, hidden), path)
 
+if len(args.onnx_export) > 0:
+    # Export the model in ONNX format.
+    export_onnx(args.onnx_export, batch_size=1, seq_len=args.bptt)
+
 
 # Loop over epochs.
 lr = args.lr
 best_val_loss = None
+val_losses = []
+train_losses = []
+torch.manual_seed(args.seed)
+
+args.verbose = True
+
+model = model.FNNModel(ntokens, args.norder, 90, 90, args.nlayers, 0.3, args.tied).to(device)
 
 # At any point you can hit Ctrl + C to break out of training early.
-saved_data =[]
 try:
+    lr = args.lr
+    best_val_loss = None
+    val_losses = []
+    train_losses = []
+
     for epoch in range(1, args.epochs+1):
         epoch_start_time = time.time()
         train()
         val_loss = evaluate(val_data)
+        train_loss = evaluate(train_data)
+        val_losses.append(val_loss)
+        train_losses.append(train_loss)
+
         print('-' * 89)
         print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
-                'valid ppl {:8.2f}'.format(epoch, (time.time() - epoch_start_time),
-                                           val_loss, math.exp(val_loss)))
+              'valid ppl {:8.2f}'.format(epoch, (time.time() - epoch_start_time),
+                                         val_loss, math.exp(val_loss)))
         print('-' * 89)
-        saved_data.append('end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
-                            'valid ppl {:8.2f}'.format(epoch, (time.time() - epoch_start_time),
-                             val_loss, math.exp(val_loss)))
+
         # Save the model if the validation loss is the best we've seen so far.
         if not best_val_loss or val_loss < best_val_loss:
             with open(args.save, 'wb') as f:
@@ -269,13 +321,10 @@ try:
         else:
             # Anneal the learning rate if no improvement has been seen in the validation dataset.
             lr /= 4.0
+
 except KeyboardInterrupt:
     print('-' * 89)
     print('Exiting from training early')
-
-with open('train_data.txt', 'w', encoding='utf-8') as outf:
-    for i in range(len(saved_data)):
-        outf.write(saved_data[i]+',')
 
 # Load the best saved model.
 with open(args.save, 'rb') as f:
@@ -293,6 +342,3 @@ print('| End of training | test loss {:5.2f} | test ppl {:8.2f}'.format(
     test_loss, math.exp(test_loss)))
 print('=' * 89)
 
-if len(args.onnx_export) > 0:
-    # Export the model in ONNX format.
-    export_onnx(args.onnx_export, batch_size=1, seq_len=args.bptt)
