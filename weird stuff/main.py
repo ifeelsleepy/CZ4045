@@ -14,9 +14,9 @@ parser.add_argument('--data', type=str, default='./data/wikitext-2',
                     help='location of the data corpus')
 parser.add_argument('--model', type=str, default='FeedForward',
                     help='type of recurrent net (RNN_TANH, RNN_RELU, LSTM, GRU, Transformer)')
-parser.add_argument('--emsize', type=int, default=200,
+parser.add_argument('--emsize', type=int, default=90,
                     help='size of word embeddings')
-parser.add_argument('--nhid', type=int, default=200,
+parser.add_argument('--nhid', type=int, default=90,
                     help='number of hidden units per layer')
 parser.add_argument('--nlayers', type=int, default=1,
                     help='number of layers')
@@ -26,11 +26,11 @@ parser.add_argument('--clip', type=float, default=0.25,
                     help='gradient clipping')
 parser.add_argument('--epochs', type=int, default=5,
                     help='upper epoch limit')
-parser.add_argument('--batch_size', type=int, default=20, metavar='N',
+parser.add_argument('--batch_size', type=int, default=256, metavar='N',
                     help='batch size')
 parser.add_argument('--bptt', type=int, default=35,
                     help='sequence length')
-parser.add_argument('--dropout', type=float, default=0.2,
+parser.add_argument('--dropout', type=float, default=0.3,
                     help='dropout applied to layers (0 = no dropout)')
 parser.add_argument('--tied', action='store_true',
                     help='tie the word embedding and softmax weights')
@@ -108,6 +108,9 @@ if (args.model == 'Transformer'):
 elif (args.model == 'FeedForward'):
     model = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied).to(device)
     print(model)
+elif (args.model =='FeedForward_1'):
+    model_1 = model.FNNModel(ntokens, args.norder, 90, 90, args.nlayers, 0.3, args.tied).to(device)
+    print(model_1)
 else:
     model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied).to(device)
 
@@ -159,7 +162,7 @@ def get_ngrams(source,i):
     else:
         data = source[i-seq_len:i]
 
-    target = source[i].view(-1)
+    target = source[i+1].view(-1)
     return data, target
 
     # data = source[i:i+seq_len]
@@ -172,12 +175,11 @@ def evaluate(data_source):
     total_loss = 0.
     ntokens = len(corpus.dictionary)
     total_size = 0
-    if args.model != 'Transformer' and args.model != 'FeedForward':
-        hidden = model.init_hidden(eval_batch_size)
+
     with torch.no_grad():
         for i in range(0, data_source.size(0) - 1):
             data, targets = get_ngrams(data_source, i)
-            if args.model == 'Transformer' or args.model == 'FeedForward':
+            if args.model == 'FeedForward_1' or args.model == 'FeedForward':
                 output = model(data)
                 #output = output.view(-1, ntokens)
                 total_size+=len(data)
@@ -227,11 +229,11 @@ def train(shorter_data=False):
             break
 
 if args.tied:
-    emsizes = [10, 30, 90, 270]
+    emsizes = [10]
     nhids = [None]
 else:
-    emsizes = [10, 30, 90, 270]
-    nhids = [10, 30, 90, 270]
+    emsizes = [10]
+    nhids = [10]
 
 dropouts = [0, 0.2, 0.5]
 
@@ -289,8 +291,7 @@ train_losses = []
 torch.manual_seed(args.seed)
 
 args.verbose = True
-
-model = model.FNNModel(ntokens, args.norder, 90, 90, args.nlayers, 0.3, args.tied).to(device)
+args.model = 'FeedForward_1'
 
 # At any point you can hit Ctrl + C to break out of training early.
 try:

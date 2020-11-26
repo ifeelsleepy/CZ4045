@@ -57,23 +57,18 @@ print(is_feedforward_model)
 if not is_transformer_model:
     if not is_feedforward_model:
         hidden = model.init_hidden(1)
-input = torch.randint(7, (1, 1), dtype=torch.long).to(device)
+        
+input = torch.randint(ntokens, (1, 1), dtype=torch.long).to(device)
 
 with open(args.checkpoint, 'rb') as f:
     model = torch.load(f).to(device)
 
 model.eval()
 
-is_fnn = True
-if not is_fnn:
-    hidden = model.init_hidden(1)
-torch.manual_seed(args.seed)
-input = torch.randint(ntokens, (0, 1), dtype=torch.long).to(device)
-
-with open(args.outf, 'w') as outf:
+with open(args.outf, 'w', encoding='utf-8') as outf:
     with torch.no_grad():  # no tracking history
         for i in range(args.words):
-            seq_len = args.ngram - 1
+            seq_len = 8 - 1
             start = i - seq_len
 
             if start < 0:
@@ -93,5 +88,5 @@ with open(args.outf, 'w') as outf:
 
             outf.write(word + ('\n' if i % 20 == 19 else ' '))
 
-            if i % args.generate_log_interval == 0:
+            if i % args.log_interval == 0:
                 print('| Generated {}/{} words'.format(i, args.words))
