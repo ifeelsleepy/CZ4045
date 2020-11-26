@@ -266,7 +266,7 @@ try:
                     args.nhid = nhid
                     args.emsize =emsize
                     args.dropout = dropout
-                    model = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.nonlin, args.dropout, args.tied).to(device)
+                    #model = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.nonlin, args.dropout, args.tied).to(device)
                     print(model)
             
 
