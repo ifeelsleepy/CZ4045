@@ -147,10 +147,21 @@ def get_batch(source, i):
     return data, target
 
 def get_ngrams(source,i):
-    seq_len = args.norder
-    data = source[i:i+seq_len]
-    target = source[i+1: i+1+args.norder].view(-1)
+    seq_len = args.norder - 1
+    start = i - seq_len
+    if start <0:
+        dummy_token = corpus.dictionary.word2idx["<eos>"]
+        dummy_tokens = torch.full((-start,source.size(1)), dummy_token).to(device)
+        data = torch.cat((dummy_tokens,source[0:i]))
+    else:
+        data = source[i-seq_len:i]
+
+    target = source[i].view(-1)
     return data, target
+
+    # data = source[i:i+seq_len]
+    # target = source[i+1: i+1+args.norder].view(-1)
+    # return data, target
 
 def evaluate(data_source):
     # Turn on evaluation mode which disables dropout.
