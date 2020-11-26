@@ -24,7 +24,7 @@ parser.add_argument('--lr', type=float, default=20,
                     help='initial learning rate')
 parser.add_argument('--clip', type=float, default=0.25,
                     help='gradient clipping')
-parser.add_argument('--epochs', type=int, default=40,
+parser.add_argument('--epochs', type=int, default=5,
                     help='upper epoch limit')
 parser.add_argument('--batch_size', type=int, default=20, metavar='N',
                     help='batch size')
@@ -38,7 +38,7 @@ parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
 parser.add_argument('--cuda', action='store_true',
                     help='use CUDA')
-parser.add_argument('--log-interval', type=int, default=200, metavar='N',
+parser.add_argument('--log-interval', type=int, default=1000, metavar='N',
                     help='report interval')
 parser.add_argument('--save', type=str, default='model.pt',
                     help='path to save the final model')
@@ -171,7 +171,7 @@ def evaluate(data_source):
     if args.model != 'Transformer' and args.model != 'FeedForward':
         hidden = model.init_hidden(eval_batch_size)
     with torch.no_grad():
-        for i in range(0, data_source.size(0) - 1, args.bptt):
+        for i in range(0, data_source.size(0) - 1, args.norder):
             data, targets = get_ngrams(data_source, i)
             if args.model == 'Transformer' or args.model == 'FeedForward':
                 output = model(data)
@@ -191,7 +191,8 @@ def train():
     ntokens = len(corpus.dictionary)
     if args.model != 'Transformer' and args.model != 'FeedForward':
         hidden = model.init_hidden(args.batch_size)
-    for batch, i in enumerate(range(0, train_data.size(0) - 1, args.bptt)):
+
+    for batch, i in enumerate(range(0, train_data.size(0) - 1, args.norder)):
         data, targets = get_ngrams(train_data, i)
         if (args.SGD == True):
             # Clear gradients w.r.t. parameters
@@ -224,7 +225,7 @@ def train():
             elapsed = time.time() - start_time
             print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | '
                     'loss {:5.2f} | ppl {:8.2f}'.format(
-                epoch, batch, len(train_data) // args.bptt, lr,
+                epoch, batch, len(train_data) // args.norder, lr,
                 elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss)))
             total_loss = 0
             start_time = time.time()
