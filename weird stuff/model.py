@@ -11,9 +11,10 @@ class FNNModel(nn.Module):
         self.ntoken = ntoken
         self.norder = norder
         self.drop = nn.Dropout(dropout)
-        self.model_type = 'FeedForward'
+        #self.model_type = 'FeedForward'
         self.window_size = ninp * (norder - 1)
         self.encoder = nn.Embedding(ntoken, ninp)
+        self.relu = nn.ReLU()
 
         self.fnn = nn.Linear(self.window_size,nhid)
         self.nonlin = nn.Tanh()
@@ -28,7 +29,7 @@ class FNNModel(nn.Module):
 
         self.init_weights()
         self.nhid = nhid
-        self.nlayers = nlayers
+        #self.nlayers = nlayers
 
     def init_weights(self):
         initrange = 0.1
@@ -38,10 +39,12 @@ class FNNModel(nn.Module):
 
     def forward(self, input):
         emb = self.encoder(input).view(-1,self.window_size)
-        output= self.drop(self.fnn(emb))
-        output = self.nonlin(output)
+        #output= self.drop(self.fnn(emb))
+        #output = self.nonlin(output)
+        output = self.fnn(emb)
+        output = self.drop(self.relu(output))
         decoded = self.decoder(output)
-        decoded = decoded.view(-1, self.ntoken)
+        #decoded = decoded.view(-1, self.ntoken)
         return F.log_softmax(decoded, dim=1)
 
 # Temporarily leave PositionalEncoding module here. Will be moved somewhere else.

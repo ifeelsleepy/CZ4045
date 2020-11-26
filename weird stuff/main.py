@@ -14,13 +14,13 @@ parser.add_argument('--data', type=str, default='./data/wikitext-2',
                     help='location of the data corpus')
 parser.add_argument('--model', type=str, default='FeedForward',
                     help='type of recurrent net (RNN_TANH, RNN_RELU, LSTM, GRU, Transformer)')
-parser.add_argument('--emsize', type=int, default=200,
+parser.add_argument('--emsize', type=int, default=300,
                     help='size of word embeddings')
-parser.add_argument('--nhid', type=int, default=200,
+parser.add_argument('--nhid', type=int, default=300,
                     help='number of hidden units per layer')
 parser.add_argument('--nlayers', type=int, default=1,
                     help='number of layers')
-parser.add_argument('--lr', type=float, default=20,
+parser.add_argument('--lr', type=float, default=10,
                     help='initial learning rate')
 parser.add_argument('--clip', type=float, default=0.25,
                     help='gradient clipping')
@@ -231,11 +231,11 @@ def train(shorter_data=False):
             break
 
 if args.tied:
-    emsizes = [10]
+    emsizes = [10, 30, 90, 270]
     nhids = [None]
 else:
-    emsizes = [10]
-    nhids = [10]
+    emsizes = [10, 30, 90, 270]
+    nhids = [10, 30, 90, 270]
 
 dropouts = [0, 0.2, 0.5]
 
