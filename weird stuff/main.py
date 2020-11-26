@@ -54,6 +54,8 @@ parser.add_argument('--SGD', type=bool, default=False,
                     help='run on SGD optimization')
 parser.add_argument('--train_log_interval', type=int, default=1000,
                     help='train log interval')
+parser.add_argument('--nonlin', type=str,
+                    help='Nonlinearity function')
 
 
 args = parser.parse_args()
@@ -106,7 +108,7 @@ ntokens = len(corpus.dictionary)
 if (args.model == 'Transformer'):
     model = model.TransformerModel(ntokens, args.emsize, args.nhead, args.nhid, args.nlayers, args.dropout).to(device)
 elif (args.model == 'FeedForward'):
-    model = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied).to(device)
+    model = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.nonlin, args.dropout, args.tied).to(device)
     print(model)
 elif (args.model =='FeedForward_1'):
     model_1 = model.FNNModel(ntokens, args.norder, 90, 90, args.nlayers, 0.3, args.tied).to(device)
@@ -201,9 +203,11 @@ def train(shorter_data=False):
 
     for batch, i in enumerate(range(0, source.size(0) - 1)):
         data, targets = get_ngrams(source, i)
-        # Starting each batch, we detach the hidden state from how it was previously produced.
-        # If we didn't, the model would try backpropagating all the way to start of the dataset.
-        model.zero_grad()
+        if (args.SGD == True):
+                # Clear gradients w.r.t. parameters
+            optimizer.zero_grad()
+        else:
+            model.zero_grad()
 
         output = model(data)
         loss = criterion(output, targets)
@@ -295,6 +299,7 @@ args.verbose = True
 args.model = 'FeedForward_1'
 
 # At any point you can hit Ctrl + C to break out of training early.
+saved_data =[]
 try:
     lr = args.lr
     best_val_loss = None
@@ -314,7 +319,9 @@ try:
               'valid ppl {:8.2f}'.format(epoch, (time.time() - epoch_start_time),
                                          val_loss, math.exp(val_loss)))
         print('-' * 89)
-
+        saved_data.append('end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
+                            'valid ppl {:8.2f}'.format(epoch, (time.time() - epoch_start_time),
+                             val_loss, math.exp(val_loss)))
         # Save the model if the validation loss is the best we've seen so far.
         if not best_val_loss or val_loss < best_val_loss:
             with open(args.save, 'wb') as f:
@@ -327,6 +334,10 @@ try:
 except KeyboardInterrupt:
     print('-' * 89)
     print('Exiting from training early')
+
+with open('train_data.txt', 'w', encoding='utf-8') as outf:
+    for i in range(len(saved_data)):
+        outf.write(saved_data[i]+',')
 
 # Load the best saved model.
 with open(args.save, 'rb') as f:

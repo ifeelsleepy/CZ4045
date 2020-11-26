@@ -6,7 +6,7 @@ import torch.nn.functional as F
 class FNNModel(nn.Module):
     """Container module with an encoder, a recurrent module, and a decoder."""
 
-    def __init__(self, ntoken, norder, ninp, nhid, nlayers, dropout=0.2, tie_weights=False):
+    def __init__(self, ntoken, norder, ninp, nhid, nlayers,nonlin, dropout=0.2, tie_weights=False):
         super(FNNModel, self).__init__()
         self.ntoken = ntoken
         #self.norder = norder
@@ -14,10 +14,17 @@ class FNNModel(nn.Module):
         #self.model_type = 'FeedForward'
         self.window_size = ninp * (norder - 1)
         self.encoder = nn.Embedding(ntoken, ninp)
-        self.relu = nn.ReLU()
 
+        if (nonlin=='relu'):
+            self.nonlin = nn.ReLU()
+        elif (nonlin=='tanh'):
+            self.nonlin = nn.Tanh()
+        elif (nonlin=='sigmoid'):
+            self.nonlin = nn.sigmoid()
+        
+        
         self.fnn = nn.Linear(self.window_size,nhid)
-        #self.nonlin = nn.Tanh()
+        
 
         self.decoder = nn.Linear(nhid, ntoken)
 
@@ -42,7 +49,7 @@ class FNNModel(nn.Module):
         #output= self.drop(self.fnn(emb))
         #output = self.nonlin(output)
         output = self.fnn(emb)
-        output = self.drop(self.relu(output))
+        output = self.drop(self.nonlin(output))
         decoded = self.decoder(output)
         #decoded = decoded.view(-1, self.ntoken)
         return F.log_softmax(decoded, dim=1)
