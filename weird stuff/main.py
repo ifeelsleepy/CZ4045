@@ -172,7 +172,7 @@ def evaluate(data_source):
         hidden = model.init_hidden(eval_batch_size)
     with torch.no_grad():
         for i in range(0, data_source.size(0) - 1, args.bptt):
-            data, targets = get_batch(data_source, i)
+            data, targets = get_ngrams(data_source, i)
             if args.model == 'Transformer' or args.model == 'FeedForward':
                 output = model(data)
                 output = output.view(-1, ntokens)

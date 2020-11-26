@@ -10,7 +10,6 @@ import argparse
 import torch
 
 import data
-import main
 
 parser = argparse.ArgumentParser(description='PyTorch Wikitext-2 Language Model')
 
@@ -50,7 +49,6 @@ model.eval()
 
 corpus = data.Corpus(args.data)
 ntokens = len(corpus.dictionary)
-window_size = main.args.norder
 
 is_transformer_model = hasattr(model, 'model_type') and model.model_type == 'Transformer'
 is_feedforward_model = hasattr(model, 'model_type') and model.model_type == 'FeedForward'
@@ -58,7 +56,7 @@ print(is_feedforward_model)
 if not is_transformer_model:
     if not is_feedforward_model:
         hidden = model.init_hidden(1)
-input = torch.randint(window_size, (1, 1), dtype=torch.long).to(device)
+input = torch.randint(8, (1, 1), dtype=torch.long).to(device)
 
 with open(args.outf, 'w', encoding='utf-8') as outf:
     with torch.no_grad():  # no tracking history

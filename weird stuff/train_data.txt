@@ -1,0 +1,1 @@
+end of epoch   1 | time:  9.60s | valid loss  0.23 | valid ppl     1.26,end of epoch   2 | time:  9.42s | valid loss  0.26 | valid ppl     1.29,
