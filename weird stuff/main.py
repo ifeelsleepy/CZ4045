@@ -210,6 +210,7 @@ def train(shorter_data=False):
 
         output = model(data)
         loss = criterion(output, targets)
+        #print(loss)
         loss.backward()
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
@@ -217,10 +218,10 @@ def train(shorter_data=False):
         for p in model.parameters():
             p.data.add_(p.grad, alpha=-lr)
 
-        total_loss = loss.item()
+        total_loss += loss.item()
 
         if batch % args.train_log_interval == 0 and batch > 0 and args.verbose:
-            print(total_loss)
+            #print(total_loss)
             cur_loss = total_loss / args.train_log_interval
             elapsed = time.time() - start_time
             print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.4f} | ms/batch {:5.2f} | '
@@ -251,38 +252,38 @@ print('-' * 89)
 
 args.verbose = False
 
-try:
-    for emsize in emsizes:
-        for nhid in nhids:
-            for dropout in dropouts:
-                for nonlin in nonlins:
-                    if nhid is None:
-                        nhid = emsize
+# try:
+#     for emsize in emsizes:
+#         for nhid in nhids:
+#             for dropout in dropouts:
+#                 for nonlin in nonlins:
+#                     if nhid is None:
+#                         nhid = emsize
 
-                    best_val_loss = None
-                    torch.manual_seed(args.seed)
-                    args.model = 'FeedForward'
-                    args.nonlin = nonlin
-                    args.nhid = nhid
-                    args.emsize =emsize
-                    args.dropout = dropout
-                    #model = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.nonlin, args.dropout, args.tied).to(device)
-                    print(model)
+#                     best_val_loss = None
+#                     torch.manual_seed(args.seed)
+#                     args.model = 'FeedForward'
+#                     args.nonlin = nonlin
+#                     args.nhid = nhid
+#                     args.emsize =emsize
+#                     args.dropout = dropout
+#                     #model = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.nonlin, args.dropout, args.tied).to(device)
+#                     #print(model)
             
 
-                    for epoch in range(1, epochs+1):
+#                     for epoch in range(1, epochs+1):
                         
-                        train(shorter_data=True)
-                        val_loss = evaluate(val_data[:100])
-                        if not best_val_loss or val_loss < best_val_loss:
-                            best_val_loss = val_loss
-                        else:
-                            lr /= 4.0
-                    print("| emsize {:3d} | nhid {:3d} | dropout {:02.1f} | nonlin: {} |val loss {:02.4f} ".format(emsize, nhid, dropout, nonlin, best_val_loss))
+#                         train(shorter_data=True)
+#                         val_loss = evaluate(val_data[:100])
+#                         if not best_val_loss or val_loss < best_val_loss:
+#                             best_val_loss = val_loss
+#                         else:
+#                             lr /= 4.0
+#                     print("| emsize {:3d} | nhid {:3d} | dropout {:02.1f} | nonlin: {} |val loss {:02.4f} ".format(emsize, nhid, dropout, nonlin, best_val_loss))
 
-except KeyboardInterrupt:
-    print('-' * 89)
-    print('Exiting from training early')
+# except KeyboardInterrupt:
+#     print('-' * 89)
+#     print('Exiting from training early')
 
 def export_onnx(path, batch_size, seq_len):
     print('The model is also exported in ONNX format at {}'.
