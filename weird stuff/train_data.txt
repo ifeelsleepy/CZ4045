@@ -1,0 +1,1 @@
+end of epoch   1 | time: 103.70s | valid loss  7.01 | valid ppl  1103.71,
