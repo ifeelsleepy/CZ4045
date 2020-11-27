@@ -20,7 +20,7 @@ class FNNModel(nn.Module):
         elif (nonlin=='tanh'):
             self.nonlin = nn.Tanh()
         elif (nonlin=='sigmoid'):
-            self.nonlin = nn.sigmoid()
+            self.nonlin = nn.Sigmoid()
         
         
         self.fnn = nn.Linear(self.window_size,nhid)

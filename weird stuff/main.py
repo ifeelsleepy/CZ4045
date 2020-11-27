@@ -56,6 +56,8 @@ parser.add_argument('--train_log_interval', type=int, default=1000,
                     help='train log interval')
 parser.add_argument('--nonlin', type=str, default='tanh',
                     help='Nonlinearity function')
+parser.add_argument('--verbose', type=bool, default=True,
+                    help='Verbose ')
 
 
 args = parser.parse_args()
@@ -108,7 +110,8 @@ ntokens = len(corpus.dictionary)
 if (args.model == 'Transformer'):
     model = model.TransformerModel(ntokens, args.emsize, args.nhead, args.nhid, args.nlayers, args.dropout).to(device)
 elif (args.model == 'FeedForward'):
-    model = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.nonlin, args.dropout, args.tied).to(device)
+    model_1 = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.nonlin, args.dropout, args.tied).to(device)
+    print(model_1)
 elif (args.model =='FeedForward_1'):
     model_1 = model.FNNModel(ntokens, args.norder, 90, 90, args.nlayers, 0.3, args.tied).to(device)
     print(model_1)
@@ -122,7 +125,7 @@ criterion = nn.NLLLoss()
 if (args.SGD == True):
     print("Optimizing based on SGD")
     learning_rate = args.lr
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.SGD(model_1.parameters(), lr=learning_rate)
 
 ###############################################################################
 # Training code
@@ -172,7 +175,7 @@ def get_ngrams(source,i):
 
 def evaluate(data_source):
     # Turn on evaluation mode which disables dropout.
-    model.eval()
+    model_1.eval()
     total_loss = 0.
     ntokens = len(corpus.dictionary)
     total_size = 0
@@ -180,7 +183,7 @@ def evaluate(data_source):
     with torch.no_grad():
         for i in range(0, data_source.size(0) - 1):
             data, targets = get_ngrams(data_source, i)
-            output = model(data)
+            output = model_1(data)
             #output = output.view(-1, ntokens)
             total_size+=len(data)
             total_loss += len(data) * criterion(output, targets).item()
@@ -194,7 +197,7 @@ def evaluate(data_source):
 
 def train(shorter_data=False):
     # Turn on training mode which enables dropout.
-    model.train()
+    model_1.train()
     total_loss = 0
     start_time = time.time()
     ntokens = len(corpus.dictionary)
@@ -206,16 +209,16 @@ def train(shorter_data=False):
                 # Clear gradients w.r.t. parameters
             optimizer.zero_grad()
         else:
-            model.zero_grad()
+            model_1.zero_grad()
 
-        output = model(data)
+        output = model_1(data)
         loss = criterion(output, targets)
         #print(loss)
         loss.backward()
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
-        torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
-        for p in model.parameters():
+        torch.nn.utils.clip_grad_norm_(model_1.parameters(), args.clip)
+        for p in model_1.parameters():
             p.data.add_(p.grad, alpha=-lr)
 
         total_loss += loss.item()
@@ -233,85 +236,87 @@ def train(shorter_data=False):
         if args.dry_run:
             break
 
-
-
 if args.tied:
-    emsizes = [10, 30, 90, 270]
+    emsizes = [10,30,90,270]
     nhids = [None]
 else:
-    emsizes = [10, 30, 90, 270]
-    nhids = [10, 30, 90, 270]
+    emsizes = [10,30,90,270]
+    nhids = [10,30,90,270]
 
 dropouts = [0, 0.2, 0.5]
 nonlins = ['tanh','relu','sigmoid']
-
+best_val_loss = 999
 epochs = 3
 lr = args.lr
 
-print('-' * 89)
-print("Hyperparameters tuning using val loss after {:1d} epochs".format(epochs))
-print('-' * 89)
+# print('-' * 89)
+# print("Hyperparameters tuning using val loss after {:1d} epochs".format(epochs))
+# print('-' * 89)
 
-args.verbose = False
+# args.verbose = False
 
-try:
-    for emsize in emsizes:
-        for nhid in nhids:
-            for dropout in dropouts:
-                for nonlin in nonlins:
-                    if nhid is None:
-                        nhid = emsize
+# try:
+#     for emsize in emsizes:
+#         for nhid in nhids:
+#             for dropout in dropouts:
+#                 for nonlin in nonlins:
+#                     if nhid is None:
+#                         nhid = emsize
 
-                    best_val_loss = None
-                    torch.manual_seed(args.seed)
-                    args.model = 'FeedForward'
-                    args.nonlin = nonlin
-                    args.nhid = nhid
-                    args.emsize =emsize
-                    args.dropout = dropout
-                    #model = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.nonlin, args.dropout, args.tied).to(device)
-                    #print(model)
-            
-
-                    for epoch in range(1, epochs+1):
+                    
+#                     torch.manual_seed(args.seed)
+#                     args.model = 'FeedForward'
+#                     args.nonlin = nonlin
+#                     args.nhid = nhid
+#                     args.emsize =emsize
+#                     args.dropout = dropout
+#                     model_1 = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.nonlin, args.dropout, args.tied).to(device)
+                    
+#                     for epoch in range(1, epochs+1):
                         
-                        train(shorter_data=True)
-                        val_loss = evaluate(val_data[:100])
-                        if not best_val_loss or val_loss < best_val_loss:
-                            best_val_loss = val_loss
-                            best_var = [emsize, nhid, nonlin, dropout]
+#                         train(shorter_data=True)
+#                         val_loss = evaluate(val_data[:100])
+                        
+#                         if (val_loss < best_val_loss):
+#                             best_val_loss = val_loss
+#                             best_var = [emsize, nhid, nonlin, dropout]
+#                         else:
+#                             lr /= 4.0
+                    
+#                     print("| emsize {:3d} | nhid {:3d} | dropout {:02.1f} | nonlin: {} |val loss {:02.4f} ".format(emsize, nhid, dropout, nonlin, val_loss))
 
-                        else:
-                            lr /= 4.0
-                    print("| emsize {:3d} | nhid {:3d} | dropout {:02.1f} | nonlin: {} |val loss {:02.4f} ".format(emsize, nhid, dropout, nonlin, best_val_loss))
+                    
+# except KeyboardInterrupt:
+#     print('-' * 89)
+#     print('Exiting from training early')
 
-except KeyboardInterrupt:
-    print('-' * 89)
-    print('Exiting from training early')
+# def export_onnx(path, batch_size, seq_len):
+#     print('The model is also exported in ONNX format at {}'.
+#           format(os.path.realpath(args.onnx_export)))
+#     model_1.eval()
+#     dummy_input = torch.LongTensor(seq_len * batch_size).zero_().view(-1, batch_size).to(device)
+#     hidden = model_1.init_hidden(batch_size)
+#     torch.onnx.export(model_1, (dummy_input, hidden), path)
 
-def export_onnx(path, batch_size, seq_len):
-    print('The model is also exported in ONNX format at {}'.
-          format(os.path.realpath(args.onnx_export)))
-    model.eval()
-    dummy_input = torch.LongTensor(seq_len * batch_size).zero_().view(-1, batch_size).to(device)
-    hidden = model.init_hidden(batch_size)
-    torch.onnx.export(model, (dummy_input, hidden), path)
-
-if len(args.onnx_export) > 0:
-    # Export the model in ONNX format.
-    export_onnx(args.onnx_export, batch_size=1, seq_len=args.bptt)
+# if len(args.onnx_export) > 0:
+#     # Export the model in ONNX format.
+#     export_onnx(args.onnx_export, batch_size=1, seq_len=args.bptt)
 
 
-# Loop over epochs.
-lr = args.lr
-best_val_loss = None
-val_losses = []
-train_losses = []
-torch.manual_seed(args.seed)
+# # Loop over epochs.
+# lr = args.lr
+# val_losses = []
+# train_losses = []
+# torch.manual_seed(args.seed)
 
-args.verbose = True
-#args.model = 'FeedForward_1'
-#args.model = model.FNNModel(ntokens, args.norder, best_var[0], best_var[1], args.nlayers, best_var[2], best_var[3], args.tied).to(device)
+# args.verbose = True
+# args.model = 'FeedForward_1'
+# for i in range(0, len(best_var)):
+#       print(best_var[i])
+# model_1 = model.FNNModel(ntokens, args.norder,best_var[0],best_var[1], args.nlayers, best_var[2], best_var[3],args.tied).to(device)
+# print(model_1)
+
+
 
 # At any point you can hit Ctrl + C to break out of training early.
 saved_data =[]
@@ -340,7 +345,7 @@ try:
         # Save the model if the validation loss is the best we've seen so far.
         if not best_val_loss or val_loss < best_val_loss:
             with open(args.save, 'wb') as f:
-                torch.save(model, f)
+                torch.save(model_1, f)
             best_val_loss = val_loss
         else:
             # Anneal the learning rate if no improvement has been seen in the validation dataset.
@@ -356,7 +361,7 @@ with open('train_data.txt', 'w', encoding='utf-8') as outf:
 
 # Load the best saved model.
 with open(args.save, 'rb') as f:
-    model = torch.load(f)
+    model_1 = torch.load(f)
     # after load the rnn params are not a continuous chunk of memory
     # this makes them a continuous chunk, and will speed up forward pass
     # Currently, only rnn model supports flatten_parameters function.
