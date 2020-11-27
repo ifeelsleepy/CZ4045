@@ -1,5 +1,8 @@
+import torch
 
-if args.tied:
+import main
+
+if main.args.tied:
     emsizes = [10]
     nhids = [None]
 else:
@@ -10,7 +13,7 @@ dropouts = [0, 0.2, 0.5]
 nonlins = ['tanh','relu','sigmoid']
 
 epochs = 3
-lr = args.lr
+lr = main.args.lr
 
 
 try:
@@ -22,12 +25,12 @@ try:
                         nhid = emsize
 
                     best_val_loss = None
-                    torch.manual_seed(args.seed)
-                    args.model = 'FeedForward'
-                    args.nonlin = nonlin
-                    args.nhid = nhid
-                    args.emsize =emsize
-                    args.dropout = dropout
+                    torch.manual_seed(main.args.seed)
+                    main.args.model = 'FeedForward'
+                    main.args.nonlin = nonlin
+                    main.args.nhid = nhid
+                    main.args.emsize =emsize
+                    main.args.dropout = dropout
                     
                     # RUN  python main.py --model=FeedForward --epochs=5 --cuda --norder=8 --save=
                     #with configs
@@ -35,8 +38,8 @@ try:
 
                     for epoch in range(1, epochs+1):
                         
-                        train(shorter_data=True)
-                        val_loss = evaluate(val_data[:100])
+                        main.train(shorter_data=True)
+                        val_loss = main.evaluate(main.val_data[:100])
                         if not best_val_loss or val_loss < best_val_loss:
                             best_val_loss = val_loss
                         else:
