@@ -233,12 +233,14 @@ def train(shorter_data=False):
         if args.dry_run:
             break
 
+
+
 if args.tied:
-    emsizes = [10]
+    emsizes = [10, 30, 90, 270]
     nhids = [None]
 else:
-    emsizes = [10]
-    nhids = [10]
+    emsizes = [10, 30, 90, 270]
+    nhids = [10, 30, 90, 270]
 
 dropouts = [0, 0.2, 0.5]
 nonlins = ['tanh','relu','sigmoid']
@@ -252,38 +254,40 @@ print('-' * 89)
 
 args.verbose = False
 
-# try:
-#     for emsize in emsizes:
-#         for nhid in nhids:
-#             for dropout in dropouts:
-#                 for nonlin in nonlins:
-#                     if nhid is None:
-#                         nhid = emsize
+try:
+    for emsize in emsizes:
+        for nhid in nhids:
+            for dropout in dropouts:
+                for nonlin in nonlins:
+                    if nhid is None:
+                        nhid = emsize
 
-#                     best_val_loss = None
-#                     torch.manual_seed(args.seed)
-#                     args.model = 'FeedForward'
-#                     args.nonlin = nonlin
-#                     args.nhid = nhid
-#                     args.emsize =emsize
-#                     args.dropout = dropout
-#                     #model = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.nonlin, args.dropout, args.tied).to(device)
-#                     #print(model)
+                    best_val_loss = None
+                    torch.manual_seed(args.seed)
+                    args.model = 'FeedForward'
+                    args.nonlin = nonlin
+                    args.nhid = nhid
+                    args.emsize =emsize
+                    args.dropout = dropout
+                    #model = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.nonlin, args.dropout, args.tied).to(device)
+                    #print(model)
             
 
-#                     for epoch in range(1, epochs+1):
+                    for epoch in range(1, epochs+1):
                         
-#                         train(shorter_data=True)
-#                         val_loss = evaluate(val_data[:100])
-#                         if not best_val_loss or val_loss < best_val_loss:
-#                             best_val_loss = val_loss
-#                         else:
-#                             lr /= 4.0
-#                     print("| emsize {:3d} | nhid {:3d} | dropout {:02.1f} | nonlin: {} |val loss {:02.4f} ".format(emsize, nhid, dropout, nonlin, best_val_loss))
+                        train(shorter_data=True)
+                        val_loss = evaluate(val_data[:100])
+                        if not best_val_loss or val_loss < best_val_loss:
+                            best_val_loss = val_loss
+                            best_var = [emsize, nhid, nonlin, dropout]
 
-# except KeyboardInterrupt:
-#     print('-' * 89)
-#     print('Exiting from training early')
+                        else:
+                            lr /= 4.0
+                    print("| emsize {:3d} | nhid {:3d} | dropout {:02.1f} | nonlin: {} |val loss {:02.4f} ".format(emsize, nhid, dropout, nonlin, best_val_loss))
+
+except KeyboardInterrupt:
+    print('-' * 89)
+    print('Exiting from training early')
 
 def export_onnx(path, batch_size, seq_len):
     print('The model is also exported in ONNX format at {}'.
@@ -306,7 +310,8 @@ train_losses = []
 torch.manual_seed(args.seed)
 
 args.verbose = True
-args.model = 'FeedForward_1'
+#args.model = 'FeedForward_1'
+#args.model = model.FNNModel(ntokens, args.norder, best_var[0], best_var[1], args.nlayers, best_var[2], best_var[3], args.tied).to(device)
 
 # At any point you can hit Ctrl + C to break out of training early.
 saved_data =[]
