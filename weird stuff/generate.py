@@ -6,10 +6,12 @@
 ###############################################################################
 
 import argparse
+import math
 
 import torch
 
 import data
+import main
 
 parser = argparse.ArgumentParser(description='PyTorch Wikitext-2 Language Model')
 
@@ -90,3 +92,13 @@ with open(args.outf, 'w', encoding='utf-8') as outf:
 
             if i % args.log_interval == 0:
                 print('| Generated {}/{} words'.format(i, args.words))
+
+            generated = corpus.tokenize('generated.txt')
+            generate_data = main.batchify(generated, main.eval_batch_size)
+
+            #Run on test data
+            gen_loss = main.evaluate(generate_data)
+            print( '=' * 89)
+            print('| End of training | generate  text loss {:5.2f} | generate text ppl {:8.2f}'.format(
+                gen_loss, math.exp(gen_loss)))
+            print('=' * 89)
