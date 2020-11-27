@@ -42,8 +42,6 @@ parser.add_argument('--log-interval', type=int, default=1000, metavar='N',
                     help='report interval')
 parser.add_argument('--save', type=str, default='model.pt',
                     help='path to save the final model')
-parser.add_argument('--save_data', type=str, default='save_data.txt',
-                    help='path to save the final model')
 parser.add_argument('--onnx-export', type=str, default='',
                     help='path to export the final model in onnx format')
 parser.add_argument('--norder', type=int, default=8,
@@ -56,7 +54,7 @@ parser.add_argument('--SGD', type=bool, default=False,
                     help='run on SGD optimization')
 parser.add_argument('--train_log_interval', type=int, default=1000,
                     help='train log interval')
-parser.add_argument('--nonlin', type=str, default='tanh',
+parser.add_argument('--nonlin', type=str,
                     help='Nonlinearity function')
 
 
