@@ -54,7 +54,7 @@ parser.add_argument('--SGD', type=bool, default=False,
                     help='run on SGD optimization')
 parser.add_argument('--train_log_interval', type=int, default=1000,
                     help='train log interval')
-parser.add_argument('--nonlin', type=str,
+parser.add_argument('--nonlin', type=str, default='tanh'
                     help='Nonlinearity function')
 
 
