@@ -60,6 +60,8 @@ parser.add_argument('--nonlin', type=str, default='tanh',
                     help='Nonlinearity function')
 parser.add_argument('--verbose', type=bool, default=True,
                     help='Verbose ')
+parser.add_argument('--tune_hyperparams', type=bool, default=False,
+                    help='Option to tune hyperparameters before training')
 
 
 args = parser.parse_args()
@@ -109,16 +111,9 @@ test_data = batchify(corpus.test, eval_batch_size)
 ###############################################################################
 
 ntokens = len(corpus.dictionary)
-if (args.model == 'Transformer'):
-    model = model.TransformerModel(ntokens, args.emsize, args.nhead, args.nhid, args.nlayers, args.dropout).to(device)
-elif (args.model == 'FeedForward'):
-    model_1 = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.nonlin, args.dropout, args.tied).to(device)
-    print(model_1)
-elif (args.model =='FeedForward_1'):
-    model_1 = model.FNNModel(ntokens, args.norder, 90, 90, args.nlayers, 0.3, args.tied).to(device)
-    print(model_1)
-else:
-    model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied).to(device)
+model_1 = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.nonlin, args.dropout, args.tied).to(device)
+print(model_1)
+
 
 #Instantiate loss class
 criterion = nn.NLLLoss()
@@ -151,12 +146,6 @@ def repackage_hidden(h):
 # done along the batch dimension (i.e. dimension 1), since that was handled
 # by the batchify function. The chunks are along dimension 0, corresponding
 # to the seq_len dimension in the LSTM.
-
-def get_batch(source, i):
-    seq_len = (min(args.bptt, len(source) - 1 - i))
-    data = source[i:i+seq_len]
-    target = source[i+1:i+1+seq_len].view(-1)
-    return data, target
 
 def get_ngrams(source,i):
     seq_len = args.norder - 1
@@ -238,85 +227,90 @@ def train(shorter_data=False):
         if args.dry_run:
             break
 
-if args.tied:
-    emsizes = [10,30,90,270]
-    nhids = [None]
-else:
-    emsizes = [10,30,90,270]
-    nhids = [10,30,90,270]
 
-dropouts = [0, 0.2, 0.5]
-nonlins = ['tanh','relu','sigmoid']
-best_val_loss = 999
-epochs = 3
-lr = args.lr
 
-# print('-' * 89)
-# print("Hyperparameters tuning using val loss after {:1d} epochs".format(epochs))
-# print('-' * 89)
+#Hyperparameter tuning code
+if (args.tune_hyperparams == True):
+    if args.tied:
+        emsizes = [10,30,90,270]
+        nhids = [None]
+    else:
+        emsizes = [10,30,90,270]
+        nhids = [10,30,90,270]
 
-# args.verbose = False
+    dropouts = [0, 0.2, 0.5]
+    nonlins = ['tanh','relu','sigmoid']
+    best_val_loss = 999
+    epochs = 3
+    lr = args.lr
 
-# try:
-#     for emsize in emsizes:
-#         for nhid in nhids:
-#             for dropout in dropouts:
-#                 for nonlin in nonlins:
-#                     if nhid is None:
-#                         nhid = emsize
+    print('-' * 89)
+    print("Hyperparameters tuning using val loss after {:1d} epochs".format(epochs))
+    print('-' * 89)
 
-                    
-#                     torch.manual_seed(args.seed)
-#                     args.model = 'FeedForward'
-#                     args.nonlin = nonlin
-#                     args.nhid = nhid
-#                     args.emsize =emsize
-#                     args.dropout = dropout
-#                     model_1 = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.nonlin, args.dropout, args.tied).to(device)
-                    
-#                     for epoch in range(1, epochs+1):
+    args.verbose = False
+
+    try:
+        for emsize in emsizes:
+            for nhid in nhids:
+                for dropout in dropouts:
+                    for nonlin in nonlins:
+                        if nhid is None:
+                            nhid = emsize
+
                         
-#                         train(shorter_data=True)
-#                         val_loss = evaluate(val_data[:100])
+                        torch.manual_seed(args.seed)
+                        args.model = 'FeedForward'
+                        args.nonlin = nonlin
+                        args.nhid = nhid
+                        args.emsize =emsize
+                        args.dropout = dropout
+                        model_1 = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.nonlin, args.dropout, args.tied).to(device)
                         
-#                         if (val_loss < best_val_loss):
-#                             best_val_loss = val_loss
-#                             best_var = [emsize, nhid, nonlin, dropout]
-#                         else:
-#                             lr /= 4.0
-                    
-#                     print("| emsize {:3d} | nhid {:3d} | dropout {:02.1f} | nonlin: {} |val loss {:02.4f} ".format(emsize, nhid, dropout, nonlin, val_loss))
+                        for epoch in range(1, epochs+1):
+                            
+                            train(shorter_data=True)
+                            val_loss = evaluate(val_data[:100])
+                            
+                            if (val_loss < best_val_loss):
+                                best_val_loss = val_loss
+                                best_var = [emsize, nhid, nonlin, dropout]
+                            else:
+                                lr /= 4.0
+                        
+                        print("| emsize {:3d} | nhid {:3d} | dropout {:02.1f} | nonlin: {} |val loss {:02.4f} ".format(emsize, nhid, dropout, nonlin, val_loss))
 
-                    
-# except KeyboardInterrupt:
-#     print('-' * 89)
-#     print('Exiting from training early')
+                        
+    except KeyboardInterrupt:
+        print('-' * 89)
+        print('Exiting from training early')
 
-# def export_onnx(path, batch_size, seq_len):
-#     print('The model is also exported in ONNX format at {}'.
-#           format(os.path.realpath(args.onnx_export)))
-#     model_1.eval()
-#     dummy_input = torch.LongTensor(seq_len * batch_size).zero_().view(-1, batch_size).to(device)
-#     hidden = model_1.init_hidden(batch_size)
-#     torch.onnx.export(model_1, (dummy_input, hidden), path)
+    def export_onnx(path, batch_size, seq_len):
+        print('The model is also exported in ONNX format at {}'.
+            format(os.path.realpath(args.onnx_export)))
+        model_1.eval()
+        dummy_input = torch.LongTensor(seq_len * batch_size).zero_().view(-1, batch_size).to(device)
+        hidden = model_1.init_hidden(batch_size)
+        torch.onnx.export(model_1, (dummy_input, hidden), path)
 
-# if len(args.onnx_export) > 0:
-#     # Export the model in ONNX format.
-#     export_onnx(args.onnx_export, batch_size=1, seq_len=args.bptt)
+    if len(args.onnx_export) > 0:
+        # Export the model in ONNX format.
+        export_onnx(args.onnx_export, batch_size=1, seq_len=args.bptt)
 
 
-# # Loop over epochs.
-# lr = args.lr
-# val_losses = []
-# train_losses = []
-# torch.manual_seed(args.seed)
+    # Loop over epochs.
+    lr = args.lr
+    val_losses = []
+    train_losses = []
+    torch.manual_seed(args.seed)
 
-# args.verbose = True
-# args.model = 'FeedForward_1'
-# for i in range(0, len(best_var)):
-#       print(best_var[i])
-# model_1 = model.FNNModel(ntokens, args.norder,best_var[0],best_var[1], args.nlayers, best_var[2], best_var[3],args.tied).to(device)
-# print(model_1)
+    args.verbose = True
+    args.model = 'FeedForward_1'
+    for i in range(0, len(best_var)):
+        print(best_var[i])
+    model_1 = model.FNNModel(ntokens, args.norder,best_var[0],best_var[1], args.nlayers, best_var[2], best_var[3],args.tied).to(device)
+    print('Best model is:')
+    print(model_1)
 
 
 

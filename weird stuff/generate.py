@@ -53,12 +53,7 @@ corpus = data.Corpus(args.data)
 ntokens = len(corpus.dictionary)
 
 
-is_transformer_model = hasattr(model, 'model_type') and model.model_type == 'Transformer'
 is_feedforward_model = hasattr(model, 'model_type') and model.model_type == 'FeedForward'
-print(is_feedforward_model)
-if not is_transformer_model:
-    if not is_feedforward_model:
-        hidden = model.init_hidden(1)
         
 input = torch.randint(ntokens, (1, 1), dtype=torch.long).to(device)
 
