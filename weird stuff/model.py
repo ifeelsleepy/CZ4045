@@ -11,7 +11,7 @@ class FNNModel(nn.Module):
         self.ntoken = ntoken
         #self.norder = norder
         self.drop = nn.Dropout(dropout)
-        #self.model_type = 'FeedForward'
+        self.model_type = 'FeedForward'
         self.window_size = ninp * (norder - 1)
         self.encoder = nn.Embedding(ntoken, ninp)
 

@@ -42,6 +42,8 @@ parser.add_argument('--log-interval', type=int, default=1000, metavar='N',
                     help='report interval')
 parser.add_argument('--save', type=str, default='model.pt',
                     help='path to save the final model')
+parser.add_argument('--save_data', type=str, default='train_data.txt',
+                    help='path to save the training results')
 parser.add_argument('--onnx-export', type=str, default='',
                     help='path to export the final model in onnx format')
 parser.add_argument('--norder', type=int, default=8,
@@ -355,7 +357,7 @@ except KeyboardInterrupt:
     print('-' * 89)
     print('Exiting from training early')
 
-with open('train_data.txt', 'w', encoding='utf-8') as outf:
+with open(args.save_data, 'w', encoding='utf-8') as outf:
     for i in range(len(saved_data)):
         outf.write(saved_data[i]+',')
 
