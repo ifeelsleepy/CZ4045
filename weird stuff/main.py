@@ -18,8 +18,6 @@ parser.add_argument('--emsize', type=int, default=300,
                     help='size of word embeddings')
 parser.add_argument('--nhid', type=int, default=300,
                     help='number of hidden units per layer')
-parser.add_argument('--nlayers', type=int, default=1,
-                    help='number of layers')
 parser.add_argument('--lr', type=float, default=10,
                     help='initial learning rate')
 parser.add_argument('--clip', type=float, default=0.25,
@@ -111,7 +109,7 @@ test_data = batchify(corpus.test, eval_batch_size)
 ###############################################################################
 
 ntokens = len(corpus.dictionary)
-model_1 = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nlayers, args.nonlin, args.dropout, args.tied).to(device)
+model_1 = model.FNNModel(ntokens,args.norder, args.emsize, args.nhid, args.nonlin, args.dropout, args.tied).to(device)
 print(model_1)
 
 
@@ -121,8 +119,8 @@ criterion = nn.NLLLoss()
 # Instantiate opimizer class
 if (args.SGD == True):
     print("Optimizing based on SGD")
-    learning_rate = args.lr
-    optimizer = torch.optim.SGD(model_1.parameters(), lr=learning_rate)
+    args.lr = 0.01
+    optimizer = torch.optim.Adam(model_1.parameters(), lr=args.lr)
 
 ###############################################################################
 # Training code
@@ -206,6 +204,9 @@ def train(shorter_data=False):
         loss = criterion(output, targets)
         #print(loss)
         loss.backward()
+        if (args.SGD == True):
+            # Clear gradients w.r.t. parameters
+            optimizer.step()
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
         torch.nn.utils.clip_grad_norm_(model_1.parameters(), args.clip)

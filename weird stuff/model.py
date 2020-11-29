@@ -6,7 +6,7 @@ import torch.nn.functional as F
 class FNNModel(nn.Module):
     """Container module with an encoder, a recurrent module, and a decoder."""
 
-    def __init__(self, ntoken, norder, ninp, nhid, nlayers,nonlin, dropout=0.2, tie_weights=False):
+    def __init__(self, ntoken, norder, ninp, nhid,nonlin, dropout=0.2, tie_weights=False):
         super(FNNModel, self).__init__()
         self.ntoken = ntoken
         #self.norder = norder
