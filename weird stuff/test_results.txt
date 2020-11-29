@@ -1,0 +1,4 @@
+Adam optimizer | End of training | test loss  6.83 | test ppl   921.56,
+Normal | End of training | test loss  6.82 | test ppl   912.35,
+Tied | End of training | test loss  6.82 | test ppl   912.44,
+Tied Adam | End of training | test loss  6.83 | test ppl   921.56
